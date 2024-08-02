@@ -39,7 +39,7 @@ func NewStatusBar(doc *strings.Builder, width int) error {
 	fishCake := fishCakeStyle.Render("😱 Squeal")
 	statusVal := statusText.
 		Width(width - w(statusKey) - w(encoding) - w(fishCake)).
-		Render("Connected")
+		Render("No Databases Configured")
 
 	bar := lipgloss.JoinHorizontal(lipgloss.Top,
 		statusKey,
