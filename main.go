@@ -14,13 +14,13 @@ import (
 
 var (
     pageStyle = lipgloss.NewStyle().
-    Border(lipgloss.RoundedBorder()).
-    BorderForeground(lipgloss.Color("#26ff00")).
-    Padding(1, 0).
-    BorderTop(true).
-    BorderLeft(true).
-    BorderRight(true).
-    BorderBottom(true)
+        Border(lipgloss.RoundedBorder()).
+        BorderForeground(lipgloss.Color("#26ff00")).
+        Padding(1, 0).
+        BorderTop(true).
+        BorderLeft(true).
+        BorderRight(true).
+        BorderBottom(true)
 )
 
 type Model struct {
@@ -51,6 +51,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
     content := strings.Builder{}
     welcome := components.NewWelcomeDialog(m.width)
+    quickKeys := components.NewQuickKeys(m.width)
     status := components.NewStatusBar(m.width)
 
     content.WriteString(lipgloss.Place(
@@ -61,8 +62,9 @@ func (m Model) View() string {
         welcome,
     ) + "\n\n")
 
-    content.WriteString(lipgloss.JoinHorizontal(
-        lipgloss.Top,
+    content.WriteString(lipgloss.JoinVertical(
+        lipgloss.Left,
+        quickKeys,
         status,
     ))
 
