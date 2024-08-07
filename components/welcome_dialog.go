@@ -20,6 +20,7 @@ var (
 			Foreground(lipgloss.Color("#FFF7DB")).
 			Background(lipgloss.Color("#888B7E")).
 			Padding(0, 3).
+			MarginRight(2).
 			MarginTop(1)
 
 	activeButtonStyle = buttonStyle.
@@ -29,9 +30,13 @@ var (
 				Underline(true)
 )
 
-func NewWelcomeDialog(width int) string {
+func NewWelcomeDialog(width int, selectedOption string) string {
 	okButton := activeButtonStyle.Render("Yes")
 	cancelButton := buttonStyle.Render("No")
+	if selectedOption == "No" {
+		okButton = buttonStyle.Render("Yes")
+		cancelButton = activeButtonStyle.Render("No")
+	}
 
 	welcome := lipgloss.NewStyle().Width(56).Align(lipgloss.Center).Render("Welcom to SQueaL, the TUI database manager")
 	noDatabases := lipgloss.NewStyle().Align(lipgloss.Center).Render("It looks like you don't have any databases configured.")
