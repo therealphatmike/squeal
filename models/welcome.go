@@ -51,6 +51,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = newDbForm
 			return m, nil
 		case "left":
+			if m.selectedOption == "Yes" {
+				m.selectedOption = "No"
+			} else {
+				m.selectedOption = "Yes"
+			}
 		case "right":
 			if m.selectedOption == "Yes" {
 				m.selectedOption = "No"
@@ -80,7 +85,7 @@ func (m MainModel) View() string {
 
 		return "uh oh"
 	case newDbForm:
-		return getNewDbForm(m.width, m.height)
+		return NewDatabaseForm(m.width, m.height).View()
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}
