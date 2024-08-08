@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-
 	"github.com/therealphatmike/squeal/components"
 )
 
@@ -26,27 +25,54 @@ func NewDatabaseForm(width int, height int) NewDatabase {
 		form: huh.NewForm(
 			huh.NewGroup(
 				huh.NewInput().
-					Title("Name").
-					Key("name"),
+					Title("Connection Name").
+					Description("We use this in the connection list so you can easily choose between your DBs.").
+					Key("connectionName"),
+
 				huh.NewSelect[string]().
 					Key("engine").
-					Options(huh.NewOptions("Postgres")...).
+					Options(
+						huh.NewOption("PostgreSQL", "postgres"),
+						huh.NewOption("MySQL", "mysql"),
+						huh.NewOption("MariaDB", "maria"),
+					).
 					Title("Database Engine"),
+
+				huh.NewSelect[string]().
+					Key("mode").
+					Options(
+						huh.NewOption("Host and Port", "hostAndPort"),
+					).
+					Title("Connection Mode"),
+
+				huh.NewInput().
+					Title("Host").
+					Key("host"),
+
+				huh.NewInput().
+					Title("Port").
+					Key("port"),
+
+				huh.NewInput().
+					Title("User").
+					Key("user"),
+
+				huh.NewInput().
+					Title("Password").
+					Key("password"),
+
+				huh.NewInput().
+					Title("Default Database").
+					Key("defaultDatabase"),
+
 				huh.NewConfirm().
 					Key("submit").
-					Validate(func(v bool) error {
-						if !v {
-							return fmt.Errorf("Welp, finish up then")
-						}
-						return nil
-					}).
 					Affirmative("Create").
 					Negative("Cancel"),
 			),
 		).
-			WithWidth(80).
-			WithShowHelp(false).
-			WithShowErrors(false),
+			WithShowHelp(true).
+			WithShowErrors(true),
 	}
 }
 
@@ -59,8 +85,8 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = 100
-		m.height = 20
+		m.width = msg.Width
+		m.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -86,13 +112,18 @@ func (m NewDatabase) View() string {
 	if m.form.State == huh.StateCompleted {
 		name := m.form.GetString("name")
 		engine := m.form.GetString("engine")
-		return fmt.Sprintf("You selected: %s, Lvl. %s", name, engine)
+		return fmt.Sprintf("%s is a %s database!", name, engine)
 	}
 
-	form := m.lg.NewStyle().Margin(1, 0).Render(m.form.View())
+	form := m.lg.NewStyle().
+		Align(lipgloss.Left).
+		Margin(1, 0).
+		Width(80).
+		Render(m.form.View())
 
 	subtle := lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-	dialogBoxStyle := lipgloss.NewStyle().
+	dialogBoxStyle := m.lg.NewStyle().
+		MarginBottom(0).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#874BFD")).
 		BorderTop(true).
@@ -100,31 +131,36 @@ func (m NewDatabase) View() string {
 		BorderRight(true).
 		BorderBottom(true)
 
-	header := lipgloss.
+	header := m.lg.
 		NewStyle().
 		Width(100).
 		Height(1).
 		Align(lipgloss.Center).
 		Render("New Database Connection Form")
 
-	dialog := lipgloss.Place(
+	content := strings.Builder{}
+	quickKeys := components.NewQuickKeys(m.width)
+	statusText := "Configuring New Connection"
+	status := components.NewStatusBar(m.width, statusText)
+
+	content.WriteString(m.lg.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		dialogBoxStyle.Render(header),
+		lipgloss.JoinVertical(
+			lipgloss.Center,
+			dialogBoxStyle.Render(header),
+			form,
+		),
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(subtle),
-	)
-
-	content := strings.Builder{}
-	quickKeys := components.NewQuickKeys(m.width)
-	status := components.NewStatusBar(m.width)
+	))
 
 	content.WriteString(lipgloss.JoinVertical(
-		lipgloss.Center,
-		dialog,
-		form,
+		lipgloss.Bottom,
+		// why do I need two of these to get the quick keys bar to show up?
+		quickKeys,
 		quickKeys,
 		status,
 	))
