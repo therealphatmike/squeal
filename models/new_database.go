@@ -17,6 +17,17 @@ type NewDatabase struct {
 	lg     *lipgloss.Renderer
 }
 
+type DatabaseConnection struct {
+	ConnectionName  string `toml:"connectionName"`
+	Engine          string `toml:"engine"`
+	ConnectionMode  string `toml:"connectionMode"`
+	Host            string `toml:"host"`
+	Port            string `toml:"port"`
+	Username        string `toml:"username"`
+	Password        string `toml:"password"`
+	DefaultDatabase string `toml:"defaultDatabase"`
+}
+
 func NewDatabaseForm(width int, height int) NewDatabase {
 	return NewDatabase{
 		lg:     lipgloss.DefaultRenderer(),
@@ -100,19 +111,46 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
-		// Quit when the form is done.
-		cmds = append(cmds, tea.Quit)
-	}
-
 	return m, tea.Batch(cmds...)
 }
 
 func (m NewDatabase) View() string {
+	subtle := lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	if m.form.State == huh.StateCompleted {
-		name := m.form.GetString("name")
+		name := m.form.GetString("connectionName")
 		engine := m.form.GetString("engine")
-		return fmt.Sprintf("%s is a %s database!", name, engine)
+		username := m.form.GetString("user")
+		password := m.form.GetString("password")
+		host := m.form.GetString("host")
+		port := m.form.GetString("port")
+		db := m.form.GetString("defaultDatabase")
+
+		dialogBoxStyle := m.lg.NewStyle().
+			MarginBottom(0).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#874BFD")).
+			BorderTop(true).
+			BorderLeft(true).
+			BorderRight(true).
+			BorderBottom(true)
+
+		return m.lg.Place(
+			m.width,
+			m.height,
+			lipgloss.Center,
+			lipgloss.Center,
+			m.lg.NewStyle().
+				Margin(2).
+				Render(
+					lipgloss.JoinVertical(
+						lipgloss.Center,
+						dialogBoxStyle.Render("Connection String for "+engine+" Database "+name),
+						fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, db),
+					),
+				),
+			lipgloss.WithWhitespaceChars("U+1F631"), // IYKYK
+			lipgloss.WithWhitespaceForeground(subtle),
+		)
 	}
 
 	form := m.lg.NewStyle().
@@ -121,7 +159,6 @@ func (m NewDatabase) View() string {
 		Width(80).
 		Render(m.form.View())
 
-	subtle := lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	dialogBoxStyle := m.lg.NewStyle().
 		MarginBottom(0).
 		Border(lipgloss.RoundedBorder()).
