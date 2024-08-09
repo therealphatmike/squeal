@@ -17,17 +17,6 @@ type NewDatabase struct {
 	lg     *lipgloss.Renderer
 }
 
-type DatabaseConnection struct {
-	ConnectionName  string `toml:"connectionName"`
-	Engine          string `toml:"engine"`
-	ConnectionMode  string `toml:"connectionMode"`
-	Host            string `toml:"host"`
-	Port            string `toml:"port"`
-	Username        string `toml:"username"`
-	Password        string `toml:"password"`
-	DefaultDatabase string `toml:"defaultDatabase"`
-}
-
 func NewDatabaseForm(width int, height int) NewDatabase {
 	return NewDatabase{
 		lg:     lipgloss.DefaultRenderer(),
