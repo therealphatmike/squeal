@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/therealphatmike/squeal/components"
+	"github.com/therealphatmike/squeal/util/databases"
 )
 
 type NewDatabase struct {
@@ -98,6 +99,21 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
 		cmds = append(cmds, cmd)
+	}
+
+	if m.form.State == huh.StateCompleted {
+		db := databases.Database{
+			ConnectionName:  m.form.GetString("connectionName"),
+			Engine:          m.form.GetString("engine"),
+			Username:        m.form.GetString("user"),
+			Password:        m.form.GetString("password"),
+			Host:            m.form.GetString("host"),
+			Port:            m.form.GetString("port"),
+			DefaultDatabase: m.form.GetString("defaultDatabase"),
+		}
+		if err := databases.AddDatabaseConnection(db); err != nil {
+			cmds = append(cmds, tea.Quit)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
