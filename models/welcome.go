@@ -19,7 +19,8 @@ const (
 	selectDbForm
 )
 
-// MainModel implements tea.Model
+var emptySelectDbFormState = SelectDatabase{}
+
 type MainModel struct {
 	width             int
 	height            int
@@ -38,9 +39,6 @@ func InitSqueal() (tea.Model, tea.Cmd) {
 	}
 
 	state := welcomeView
-	if len(databases) > 0 {
-		state = selectDbForm
-	}
 
 	return MainModel{
 		databases:      databases,
@@ -54,12 +52,14 @@ func (m MainModel) Init() tea.Cmd {
 }
 
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch m.state {
 	case welcomeView:
 		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "left":
@@ -80,18 +80,27 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = newDbForm
 					m.newDbFormState = newDb
 					cmds = append(cmds, newDb.Init())
-					return m, nil
 				} else {
 					return m, tea.Quit
 				}
 			}
 		}
+		if len(m.databases) > 0 {
+			m.state = selectDbForm
+			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
+			cmds = append(cmds, m.selectDbFormState.Init())
+		}
 	case newDbForm:
 		_, newCmd := m.newDbFormState.Update(msg)
 		cmds = append(cmds, newCmd)
 	case selectDbForm:
-		_, newCmd := m.selectDbFormState.Update(msg)
-		cmds = append(cmds, newCmd)
+		if !m.selectDbFormState.ready {
+			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
+			cmds = append(cmds, m.selectDbFormState.Init())
+		} else {
+			_, newCmd := m.selectDbFormState.Update(msg)
+			cmds = append(cmds, newCmd)
+		}
 	}
 
 	switch msg := msg.(type) {
@@ -103,12 +112,14 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "ctrl+n":
+			newDb := NewDatabaseForm(m.width, m.height)
 			m.state = newDbForm
+			m.newDbFormState = newDb
+			cmds = append(cmds, newDb.Init())
 			return m, nil
 		}
 	}
 
-	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
@@ -119,7 +130,11 @@ func (m MainModel) View() string {
 	case newDbForm:
 		return m.newDbFormState.View()
 	case selectDbForm:
-		return m.selectDbFormState.View()
+		if m.selectDbFormState.ready {
+			return m.selectDbFormState.View()
+		} else {
+			return ""
+		}
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}
