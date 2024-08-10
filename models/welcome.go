@@ -1,12 +1,14 @@
 package models
 
 import (
+	"log"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therealphatmike/squeal/components"
+	"github.com/therealphatmike/squeal/util/databases"
 )
 
 type viewState int
@@ -14,22 +16,34 @@ type viewState int
 const (
 	welcomeView viewState = iota
 	newDbForm
+	selectDbForm
 )
 
-// MainModel implements tea.Model
+var emptySelectDbFormState = SelectDatabase{}
+
 type MainModel struct {
-	width          int
-	height         int
-	databases      []string
-	state          viewState
-	selectedOption string
-	newDbFormState NewDatabase
+	width             int
+	height            int
+	databases         []databases.Database
+	state             viewState
+	selectedOption    string
+	newDbFormState    NewDatabase
+	selectDbFormState SelectDatabase
 }
 
 func InitSqueal() (tea.Model, tea.Cmd) {
+	databases, err := databases.ReadDatabaseConfigs()
+	if err != nil {
+		log.Panic("Error reading databases file. Closing program")
+		return nil, tea.Quit
+	}
+
+	state := welcomeView
+
 	return MainModel{
-		databases:      []string{},
+		databases:      databases,
 		selectedOption: "Yes",
+		state:          state,
 	}, nil
 }
 
@@ -38,12 +52,14 @@ func (m MainModel) Init() tea.Cmd {
 }
 
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch m.state {
 	case welcomeView:
 		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "left":
@@ -64,15 +80,27 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.state = newDbForm
 					m.newDbFormState = newDb
 					cmds = append(cmds, newDb.Init())
-					return m, nil
 				} else {
 					return m, tea.Quit
 				}
 			}
 		}
+		if len(m.databases) > 0 {
+			m.state = selectDbForm
+			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
+			cmds = append(cmds, m.selectDbFormState.Init())
+		}
 	case newDbForm:
 		_, newCmd := m.newDbFormState.Update(msg)
 		cmds = append(cmds, newCmd)
+	case selectDbForm:
+		if !m.selectDbFormState.ready {
+			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
+			cmds = append(cmds, m.selectDbFormState.Init())
+		} else {
+			_, newCmd := m.selectDbFormState.Update(msg)
+			cmds = append(cmds, newCmd)
+		}
 	}
 
 	switch msg := msg.(type) {
@@ -84,25 +112,29 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "ctrl+n":
+			newDb := NewDatabaseForm(m.width, m.height)
 			m.state = newDbForm
+			m.newDbFormState = newDb
+			cmds = append(cmds, newDb.Init())
 			return m, nil
 		}
 	}
 
-	cmds = append(cmds, cmd)
 	return m, tea.Batch(cmds...)
 }
 
 func (m MainModel) View() string {
 	switch m.state {
 	case welcomeView:
-		if len(m.databases) <= 0 || m.databases == nil {
-			return m.getNoDatabasesScreen(m.width, m.height)
-		}
-
-		return "uh oh"
+		return m.getNoDatabasesScreen(m.width, m.height)
 	case newDbForm:
 		return m.newDbFormState.View()
+	case selectDbForm:
+		if m.selectDbFormState.ready {
+			return m.selectDbFormState.View()
+		} else {
+			return ""
+		}
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}

@@ -8,6 +8,10 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+type DatabaseFile struct {
+	Databases []Database
+}
+
 func InitDatabasesFile() (bool, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -54,7 +58,19 @@ func AddDatabaseConnection(newDb Database) error {
 		return err
 	}
 
-	if err := toml.NewEncoder(f).Encode(newDb); err != nil {
+	dbFile := DatabaseFile{}
+	if _, err := toml.DecodeFile(dbConfigFile, &dbFile); err != nil {
+		log.Panic(fmt.Sprintf("Unable to unmarshal database file: %s", err))
+		return err
+	}
+
+	dbs := dbFile.Databases
+	dbs = append(dbs, newDb)
+
+	newContent := DatabaseFile{
+		Databases: dbs,
+	}
+	if err := toml.NewEncoder(f).Encode(newContent); err != nil {
 		log.Panic(fmt.Sprintf("unable to write to file: %s", err))
 		return err
 	}
@@ -64,4 +80,22 @@ func AddDatabaseConnection(newDb Database) error {
 	}
 
 	return nil
+}
+
+func ReadDatabaseConfigs() ([]Database, error) {
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	dbConfigDir := userHome + "/.squeal"
+	dbConfigFile := dbConfigDir + "/databases.toml"
+
+	dbFile := DatabaseFile{}
+	if _, err := toml.DecodeFile(dbConfigFile, &dbFile); err != nil {
+		log.Panic(fmt.Sprintf("Unable to unmarshal database file: %s", err))
+		return nil, err
+	}
+
+	return dbFile.Databases, nil
 }
