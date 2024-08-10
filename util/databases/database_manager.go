@@ -81,3 +81,21 @@ func AddDatabaseConnection(newDb Database) error {
 
 	return nil
 }
+
+func ReadDatabaseConfigs() ([]Database, error) {
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	dbConfigDir := userHome + "/.squeal"
+	dbConfigFile := dbConfigDir + "/databases.toml"
+
+	dbFile := DatabaseFile{}
+	if _, err := toml.DecodeFile(dbConfigFile, &dbFile); err != nil {
+		log.Panic(fmt.Sprintf("Unable to unmarshal database file: %s", err))
+		return nil, err
+	}
+
+	return dbFile.Databases, nil
+}

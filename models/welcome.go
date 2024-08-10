@@ -1,12 +1,14 @@
 package models
 
 import (
+	"log"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therealphatmike/squeal/components"
+	"github.com/therealphatmike/squeal/util/databases"
 )
 
 type viewState int
@@ -14,22 +16,36 @@ type viewState int
 const (
 	welcomeView viewState = iota
 	newDbForm
+	selectDbForm
 )
 
 // MainModel implements tea.Model
 type MainModel struct {
-	width          int
-	height         int
-	databases      []string
-	state          viewState
-	selectedOption string
-	newDbFormState NewDatabase
+	width             int
+	height            int
+	databases         []databases.Database
+	state             viewState
+	selectedOption    string
+	newDbFormState    NewDatabase
+	selectDbFormState SelectDatabase
 }
 
 func InitSqueal() (tea.Model, tea.Cmd) {
+	databases, err := databases.ReadDatabaseConfigs()
+	if err != nil {
+		log.Panic("Error reading databases file. Closing program")
+		return nil, tea.Quit
+	}
+
+	state := welcomeView
+	if len(databases) > 0 {
+		state = selectDbForm
+	}
+
 	return MainModel{
-		databases:      []string{},
+		databases:      databases,
 		selectedOption: "Yes",
+		state:          state,
 	}, nil
 }
 
@@ -73,6 +89,9 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case newDbForm:
 		_, newCmd := m.newDbFormState.Update(msg)
 		cmds = append(cmds, newCmd)
+	case selectDbForm:
+		_, newCmd := m.selectDbFormState.Update(msg)
+		cmds = append(cmds, newCmd)
 	}
 
 	switch msg := msg.(type) {
@@ -96,13 +115,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m MainModel) View() string {
 	switch m.state {
 	case welcomeView:
-		if len(m.databases) <= 0 || m.databases == nil {
-			return m.getNoDatabasesScreen(m.width, m.height)
-		}
-
-		return "uh oh"
+		return m.getNoDatabasesScreen(m.width, m.height)
 	case newDbForm:
 		return m.newDbFormState.View()
+	case selectDbForm:
+		return m.selectDbFormState.View()
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}
