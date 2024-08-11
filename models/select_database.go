@@ -17,7 +17,7 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#874BFD")).
 			Margin(0, 5).
-			Padding(0, 1).
+			Padding(0).
 			BorderTop(true).
 			BorderLeft(true).
 			BorderRight(true).
@@ -30,6 +30,7 @@ type SelectDatabase struct {
 	height        int
 	form          *huh.Form
 	selectableDbs []databases.Database
+	accessor      *huh.PointerAccessor[databases.Database]
 }
 
 func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Database) SelectDatabase {
@@ -38,19 +39,24 @@ func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Datab
 		dbOptions = append(dbOptions, huh.NewOption(database.ConnectionName, database))
 	}
 
+	focused := new(databases.Database)
+	accessor := huh.NewPointerAccessor(focused)
+
 	return SelectDatabase{
 		ready:         true,
 		width:         width,
 		height:        height,
 		selectableDbs: availableDbs,
+		accessor:      accessor,
 		form: huh.NewForm(
 			huh.NewGroup(
 				huh.NewSelect[databases.Database]().
 					Title("Which database would you like to connect to?").
 					Key("database").
+					Accessor(accessor).
 					Options(dbOptions...),
 			),
-		),
+		).WithHeight(24),
 	}
 }
 
@@ -90,11 +96,13 @@ func (m SelectDatabase) View() string {
 
 	header := lipgloss.
 		NewStyle().
-		Width(100).
+		Width(102).
 		Padding(0, 0).
 		Height(1).
 		Align(lipgloss.Center).
 		Render("😱😱 Welcome to SQueaL 😱😱\nPlease select a database for connection.")
+
+	highlightedDb := m.accessor.Get()
 
 	content.WriteString(lipgloss.Place(
 		m.width,
@@ -105,9 +113,9 @@ func (m SelectDatabase) View() string {
 			lipgloss.Center,
 			dialogBoxStyle.Render(header),
 			lipgloss.JoinHorizontal(
-				lipgloss.Center,
-				dialogBoxStyle.Width(50).MarginRight(0).Padding(1).Render(m.form.View()),
-				dialogBoxStyle.Width(50).MarginLeft(0).Padding(1).Render("Database Details"),
+				lipgloss.Top,
+				dialogBoxStyle.Width(50).Height(25).MarginRight(0).Render(m.form.View()),
+				dialogBoxStyle.Width(50).Height(25).MarginLeft(0).Padding(0).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb)),
 			),
 		),
 		lipgloss.WithWhitespaceChars(" "),
@@ -126,4 +134,32 @@ func (m SelectDatabase) View() string {
 	))
 
 	return content.String()
+}
+
+func getCurrentlyHighlightedDatabaseInfo(highlighted databases.Database) string {
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#874BFD"))
+
+	infoKeyStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#32a852")).
+		Align(lipgloss.Left)
+
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		lipgloss.Place(
+			50,
+			1,
+			lipgloss.Center,
+			lipgloss.Center,
+			headerStyle.Render(highlighted.ConnectionName+" Connection Details\n"),
+		),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("Engine: "), highlighted.Engine),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("Host: "), highlighted.Host),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("ConnectionMode: "), highlighted.ConnectionMode),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("Port: "), highlighted.Port),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("Username: "), highlighted.Username),
+		lipgloss.JoinHorizontal(lipgloss.Left, infoKeyStyle.Render("Default Database: "), highlighted.DefaultDatabase),
+	)
 }
