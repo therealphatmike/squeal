@@ -90,7 +90,7 @@ func (m SelectDatabase) View() string {
 
 	header := lipgloss.
 		NewStyle().
-		Width(80).
+		Width(100).
 		Padding(0, 0).
 		Height(1).
 		Align(lipgloss.Center).
@@ -104,7 +104,11 @@ func (m SelectDatabase) View() string {
 		lipgloss.JoinVertical(
 			lipgloss.Center,
 			dialogBoxStyle.Render(header),
-			dialogBoxStyle.Padding(1).Render(m.form.View()),
+			lipgloss.JoinHorizontal(
+				lipgloss.Center,
+				dialogBoxStyle.Width(50).MarginRight(0).Padding(1).Render(m.form.View()),
+				dialogBoxStyle.Width(50).MarginLeft(0).Padding(1).Render("Database Details"),
+			),
 		),
 		lipgloss.WithWhitespaceChars(" "),
 		lipgloss.WithWhitespaceForeground(subtle),
