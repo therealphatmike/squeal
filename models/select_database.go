@@ -17,7 +17,6 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#874BFD")).
 			Margin(0, 5).
-			Padding(0).
 			BorderTop(true).
 			BorderLeft(true).
 			BorderRight(true).
@@ -92,6 +91,10 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m SelectDatabase) View() string {
+	if m.form.State == huh.StateCompleted {
+		return ""
+	}
+
 	content := strings.Builder{}
 
 	header := lipgloss.
@@ -118,7 +121,7 @@ func (m SelectDatabase) View() string {
 				dialogBoxStyle.Width(50).Height(25).MarginLeft(0).Padding(0).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb)),
 			),
 		),
-		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceChars("#!"),
 		lipgloss.WithWhitespaceForeground(subtle),
 	))
 

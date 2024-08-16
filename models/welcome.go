@@ -5,13 +5,19 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/therealphatmike/squeal/components"
 	"github.com/therealphatmike/squeal/util/databases"
 )
 
-type viewState int
+type (
+	viewState int
+	errMsg    struct {
+		error
+	}
+)
 
 const (
 	welcomeView viewState = iota
@@ -44,7 +50,7 @@ func InitSqueal() (tea.Model, tea.Cmd) {
 		databases:      databases,
 		selectedOption: "Yes",
 		state:          state,
-	}, nil
+	}, func() tea.Msg { return errMsg{err} }
 }
 
 func (m MainModel) Init() tea.Cmd {
@@ -93,6 +99,17 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case newDbForm:
 		_, newCmd := m.newDbFormState.Update(msg)
 		cmds = append(cmds, newCmd)
+		if m.newDbFormState.form.State == huh.StateCompleted {
+			databases, err := databases.ReadDatabaseConfigs()
+			if err != nil {
+				log.Panic("Error reading databases file. Closing program")
+				return nil, tea.Quit
+			}
+
+			m.state = selectDbForm
+			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, databases)
+			return m, tea.Batch(cmds...)
+		}
 	case selectDbForm:
 		if !m.selectDbFormState.ready {
 			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
