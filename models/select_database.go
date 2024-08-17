@@ -83,10 +83,6 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
-		return m, tea.Quit
-	}
-
 	return m, tea.Batch(cmds...)
 }
 

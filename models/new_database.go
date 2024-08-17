@@ -111,6 +111,7 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			DefaultDatabase: m.form.GetString("defaultDatabase"),
 		}
 		if err := databases.AddDatabaseConnection(db); err != nil {
+			// TODO handle this error more elegantly
 			cmds = append(cmds, tea.Quit)
 		}
 	}
