@@ -136,6 +136,17 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, newCmd)
 		}
 	case connectedDbView:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "tab":
+				m.connectedDbViewState.activeTab = min(m.connectedDbViewState.activeTab+1, len(m.connectedDbViewState.tabs)-1)
+			case "shift+tab":
+				m.connectedDbViewState.activeTab = max(m.connectedDbViewState.activeTab-1, 0)
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+		}
 		_, newCmd := m.connectedDbViewState.Update(msg)
 		cmds = append(cmds, newCmd)
 	}
