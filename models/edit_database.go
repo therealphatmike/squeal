@@ -191,11 +191,11 @@ func (m EditDatabase) View() string {
 		Width(100).
 		Height(1).
 		Align(lipgloss.Center).
-		Render("New Database Connection Form")
+		Render("Edit Database Connection Form")
 
 	content := strings.Builder{}
 	quickKeys := components.NewQuickKeys(m.width)
-	statusText := "Configuring New Connection"
+	statusText := "Editing Existing Database Connection"
 	status := components.NewStatusBar(m.width, statusText)
 
 	content.WriteString(m.lg.Place(
