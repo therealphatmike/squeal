@@ -17,6 +17,7 @@ const (
 	welcomeView viewState = iota
 	newDbForm
 	selectDbForm
+	editDbForm
 )
 
 var emptySelectDbFormState = SelectDatabase{}
@@ -29,6 +30,7 @@ type MainModel struct {
 	selectedOption    string
 	newDbFormState    NewDatabase
 	selectDbFormState SelectDatabase
+	editDbFormState   EditDatabase
 }
 
 func InitSqueal() (tea.Model, tea.Cmd) {
@@ -101,6 +103,9 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			_, newCmd := m.selectDbFormState.Update(msg)
 			cmds = append(cmds, newCmd)
 		}
+	case editDbForm:
+		_, newCmd := m.editDbFormState.Update(msg)
+		cmds = append(cmds, newCmd)
 	}
 
 	switch msg := msg.(type) {
@@ -111,12 +116,23 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+			// create a new database
 		case "ctrl+n":
 			newDb := NewDatabaseForm(m.width, m.height)
 			m.state = newDbForm
 			m.newDbFormState = newDb
 			cmds = append(cmds, newDb.Init())
 			return m, nil
+		// edit the database
+		case "ctrl+e":
+			if len(m.databases) > 0 {
+				// how do i grab the selected database?
+				editDb := EditDatabaseForm(m.width, m.height, m.databases[0])
+				m.state = editDbForm
+				m.editDbFormState = editDb
+				cmds = append(cmds, editDb.Init())
+				return m, nil
+			}
 		}
 	}
 
@@ -135,6 +151,8 @@ func (m MainModel) View() string {
 		} else {
 			return ""
 		}
+	case editDbForm:
+		return m.editDbFormState.View()
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}

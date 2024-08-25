@@ -82,6 +82,50 @@ func AddDatabaseConnection(newDb Database) error {
 	return nil
 }
 
+func RemoveDatabaseConnection(connectionName string) error {
+	userHome, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	dbConfigDir := userHome + "/.squeal"
+	dbConfigFile := dbConfigDir + "/databases.toml"
+	if _, err := os.Stat(dbConfigFile); os.IsNotExist(err) {
+		if err := os.WriteFile(dbConfigFile, []byte(""), 0644); err != nil {
+			log.Panic("unable to create file")
+			return err
+		}
+	}
+	f, err := os.OpenFile(dbConfigFile, os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		log.Panic("unable to read file")
+		return err
+	}
+	dbFile := DatabaseFile{}
+	if _, err := toml.DecodeFile(dbConfigFile, &dbFile); err != nil {
+		log.Panic(fmt.Sprintf("Unable to unmarshal database file: %s", err))
+		return err
+	}
+	dbs := dbFile.Databases
+	for i, db := range dbs {
+		if db.ConnectionName == connectionName {
+			dbs = append(dbs[:i], dbs[i+1:]...)
+			break
+		}
+	}
+	newContent := DatabaseFile{
+		Databases: dbs,
+	}
+	if err := toml.NewEncoder(f).Encode(newContent); err != nil {
+		log.Panic(fmt.Sprintf("unable to write to file: %s", err))
+		return err
+	}
+	if err := f.Close(); err != nil {
+		log.Panic("unable to close file")
+		return err
+	}
+	return nil
+}
+
 func ReadDatabaseConfigs() ([]Database, error) {
 	userHome, err := os.UserHomeDir()
 	if err != nil {
