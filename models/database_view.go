@@ -2,10 +2,13 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/list"
 	"github.com/therealphatmike/squeal/components"
 	"github.com/therealphatmike/squeal/postgres"
 	"github.com/therealphatmike/squeal/util/databases"
@@ -20,6 +23,7 @@ type ConnectedDatabaseView struct {
 	tabContent     []string
 	activeTab      int
 	status         string
+	schemas        []postgres.Schema
 }
 
 var (
@@ -49,6 +53,12 @@ func NewConnectedDatabaseView(width int, height int, squealDb databases.Database
 	tabs := []string{"SQL Editor"}
 	tabContent := []string{"You can write SQL queries here!"}
 
+	schemas, err := postgres.GetTables(sqlDb)
+	if err != nil {
+		// TODO handle this better
+		log.Fatal(err)
+	}
+
 	return ConnectedDatabaseView{
 		width:          width,
 		height:         height,
@@ -58,6 +68,7 @@ func NewConnectedDatabaseView(width int, height int, squealDb databases.Database
 		tabContent:     tabContent,
 		activeTab:      0,
 		status:         "Connected",
+		schemas:        schemas,
 	}, nil
 }
 
@@ -86,10 +97,32 @@ func (m ConnectedDatabaseView) View() string {
 		Align(lipgloss.Center).
 		Render(m.squealDbConfig.ConnectionName)
 
+	schemaList := list.New()
+	for _, scheme := range m.schemas {
+		// TODO: this is a placeholder to show the user-defined Tables
+		// until we implement table selection/deselection functionality
+		if scheme.Name == "public" {
+			schemaList.Item(
+				list.New(
+					scheme.Name,
+					list.New(scheme.Tables).Enumerator(list.Tree),
+				).Enumerator(list.Bullet),
+			)
+		} else {
+			schemaList.Item(
+				list.New(
+					scheme.Name,
+				).Enumerator(list.Bullet),
+			)
+		}
+	}
+
+	schemaList.Enumerator(list.Tree)
+
 	navContent := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
-		// db tables, etc here later
+		schemaList.String(),
 	)
 
 	navWidth := m.width / 5
@@ -160,4 +193,15 @@ func (m ConnectedDatabaseView) getTabLine(availableWidth int) string {
 	doc.WriteString("\n")
 	doc.WriteString(windowStyle.Width(availableWidth).Height(m.height - 6).Render(m.tabContent[m.activeTab]))
 	return docStyle.Render(doc.String())
+}
+
+func (m ConnectedDatabaseView) getTableNamesTemp() string {
+	names := ""
+	for _, schema := range m.schemas {
+		for _, table := range schema.Tables {
+			names = names + fmt.Sprintf("%s.%s\n", schema.Name, table)
+		}
+	}
+
+	return names
 }

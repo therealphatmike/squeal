@@ -26,6 +26,5 @@ func OpenDb(database databases.Database) (*sql.DB, error) {
 		return nil, err
 	}
 
-	defer db.Close()
 	return db, nil
 }
