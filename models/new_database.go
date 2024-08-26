@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -112,6 +111,7 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			DefaultDatabase: m.form.GetString("defaultDatabase"),
 		}
 		if err := databases.AddDatabaseConnection(db); err != nil {
+			// TODO handle this error more elegantly
 			cmds = append(cmds, tea.Quit)
 		}
 	}
@@ -122,40 +122,7 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m NewDatabase) View() string {
 	subtle := lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	if m.form.State == huh.StateCompleted {
-		name := m.form.GetString("connectionName")
-		engine := m.form.GetString("engine")
-		username := m.form.GetString("user")
-		password := m.form.GetString("password")
-		host := m.form.GetString("host")
-		port := m.form.GetString("port")
-		db := m.form.GetString("defaultDatabase")
-
-		dialogBoxStyle := m.lg.NewStyle().
-			MarginBottom(0).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#874BFD")).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
-
-		return m.lg.Place(
-			m.width,
-			m.height,
-			lipgloss.Center,
-			lipgloss.Center,
-			m.lg.NewStyle().
-				Margin(2).
-				Render(
-					lipgloss.JoinVertical(
-						lipgloss.Center,
-						dialogBoxStyle.Render("Connection String for "+engine+" Database "+name),
-						fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, db),
-					),
-				),
-			lipgloss.WithWhitespaceChars("U+1F631"), // IYKYK
-			lipgloss.WithWhitespaceForeground(subtle),
-		)
+		return ""
 	}
 
 	form := m.lg.NewStyle().
