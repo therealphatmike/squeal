@@ -35,8 +35,17 @@ func NewStatusBar(width int, status string) string {
 	statusKey := statusStyle.Render("STATUS")
 	encoding := encodingStyle.Render("UTF-8")
 	fishCake := fishCakeStyle.Render("😱 SQueaL")
+	minRequired := w(statusKey) + w(encoding) + w(fishCake) + 4 // +4 for status padding
+	if width <= minRequired {
+		// Terminal too narrow — show minimal status bar
+		return statusBarStyle.Width(width).Render(lipgloss.JoinHorizontal(lipgloss.Top,
+			statusKey,
+			statusText.Render("..."),
+			fishCake,
+		))
+	}
 	statusVal := statusText.
-		Width(width - w(statusKey) - w(encoding) - w(fishCake)).
+		Width(width - minRequired).
 		Render(status)
 
 	bar := lipgloss.JoinHorizontal(lipgloss.Top,

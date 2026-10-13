@@ -92,11 +92,9 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m SelectDatabase) View() string {
-	content := strings.Builder{}
-
 	header := lipgloss.
 		NewStyle().
-		Width(102).
+		Width(m.width - 10).
 		Padding(0, 0).
 		Height(1).
 		Align(lipgloss.Center).
@@ -104,6 +102,13 @@ func (m SelectDatabase) View() string {
 
 	highlightedDb := m.accessor.Get()
 
+	formWidth := (m.width - 16) / 2
+	dbInfoWidth := m.width - 16 - formWidth
+
+	formContent := dialogBoxStyle.Width(formWidth).Height(25).MarginRight(0).Render(m.form.View())
+	infoContent := dialogBoxStyle.Width(dbInfoWidth).Height(25).Padding(0, 1).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb))
+
+	content := strings.Builder{}
 	content.WriteString(lipgloss.Place(
 		m.width,
 		m.height,
@@ -114,8 +119,8 @@ func (m SelectDatabase) View() string {
 			dialogBoxStyle.Render(header),
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				dialogBoxStyle.Width(50).Height(25).MarginRight(0).Render(m.form.View()),
-				dialogBoxStyle.Width(50).Height(25).MarginLeft(0).Padding(0).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb)),
+				formContent,
+				infoContent,
 			),
 		),
 		lipgloss.WithWhitespaceChars(" "),
@@ -127,8 +132,6 @@ func (m SelectDatabase) View() string {
 	status := components.NewStatusBar(m.width, statusText)
 	content.WriteString(lipgloss.JoinVertical(
 		lipgloss.Bottom,
-		// why do I need two of these to get the quick keys bar to show up?
-		quickKeys,
 		quickKeys,
 		status,
 	))
@@ -149,7 +152,7 @@ func getCurrentlyHighlightedDatabaseInfo(highlighted databases.Database) string 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.Place(
-			50,
+			0,
 			1,
 			lipgloss.Center,
 			lipgloss.Center,

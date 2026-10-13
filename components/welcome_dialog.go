@@ -38,7 +38,7 @@ func NewWelcomeDialog(width int, selectedOption string) string {
 		cancelButton = activeButtonStyle.Render("No")
 	}
 
-	welcome := lipgloss.NewStyle().Width(56).Align(lipgloss.Center).Render("Welcom to SQueaL, the TUI database manager")
+	welcome := lipgloss.NewStyle().Width(width - 12).Align(lipgloss.Center).Render("Welcom to SQueaL, the TUI database manager")
 	noDatabases := lipgloss.NewStyle().Align(lipgloss.Center).Render("It looks like you don't have any databases configured.")
 	setupPrompt := lipgloss.NewStyle().Align(lipgloss.Center).Render("Would you like to set one up?")
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, okButton, cancelButton)
