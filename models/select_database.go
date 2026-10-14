@@ -26,6 +26,7 @@ var (
 
 type SelectDatabase struct {
 	ready         bool
+	dbSelected    bool
 	width         int
 	height        int
 	form          *huh.Form
@@ -83,9 +84,25 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Recreate form with current selection to handle resize
-		focused := m.accessor.Get()
-		return newSelectDatabaseForm(m.width, m.height, m.selectableDbs, &focused), m.form.Init()
+		// Recreate form with current selection to handle resize (skip if already completed)
+		if !m.dbSelected {
+			m.form = huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[databases.Database]().
+						Title("Which database would you like to connect to?").
+						Key("database").
+						Accessor(m.accessor).
+						Options(func() []huh.Option[databases.Database] {
+							opts := []huh.Option[databases.Database]{}
+							for _, database := range m.selectableDbs {
+								opts = append(opts, huh.NewOption(database.ConnectionName, database))
+							}
+							return opts
+						}()...),
+				),
+			).WithHeight(m.formHeight)
+			cmds = append(cmds, m.form.Init())
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -100,7 +117,8 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
-		return m, tea.Quit
+		m.dbSelected = true
+		return m, nil
 	}
 
 	return m, tea.Batch(cmds...)

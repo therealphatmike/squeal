@@ -17,6 +17,7 @@ const (
 	welcomeView viewState = iota
 	newDbForm
 	selectDbForm
+	queryEditorView
 )
 
 var emptySelectDbFormState = SelectDatabase{}
@@ -94,7 +95,10 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_, newCmd := m.newDbFormState.Update(msg)
 		cmds = append(cmds, newCmd)
 	case selectDbForm:
-		if !m.selectDbFormState.ready {
+		if m.selectDbFormState.dbSelected {
+			m.state = queryEditorView
+			cmds = append(cmds, m.selectDbFormState.Init())
+		} else if !m.selectDbFormState.ready {
 			m.selectDbFormState = NewSelectDatabaseForm(m.width, m.height, m.databases)
 			cmds = append(cmds, m.selectDbFormState.Init())
 		} else {
@@ -135,6 +139,8 @@ func (m MainModel) View() string {
 		} else {
 			return ""
 		}
+	case queryEditorView:
+		return m.getQueryEditorScreen()
 	default:
 		return m.getNoDatabasesScreen(m.width, m.height)
 	}
@@ -156,6 +162,35 @@ func (m MainModel) getNoDatabasesScreen(width int, height int) string {
 
 	content.WriteString(lipgloss.JoinVertical(
 		lipgloss.Left,
+		quickKeys,
+		status,
+	))
+
+	return content.String()
+}
+
+func (m MainModel) getQueryEditorScreen() string {
+	selectedDb := m.selectDbFormState.accessor.Get()
+	content := strings.Builder{}
+	header := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#874BFD")).
+		Width(m.width).
+		Align(lipgloss.Center).
+		Render("Query Editor — " + selectedDb.ConnectionName)
+
+	content.WriteString(header + "\n\n")
+	content.WriteString("Connected to: " + selectedDb.ConnectionName + "\n")
+	content.WriteString("Engine: " + selectedDb.Engine + "\n")
+	content.WriteString("Host: " + selectedDb.Host + ":" + selectedDb.Port + "\n\n")
+	content.WriteString("Query editor coming soon...\n\n")
+	content.WriteString("Press Ctrl+N to add a new database, or Ctrl+C to quit.\n")
+
+	quickKeys := components.NewQuickKeys(m.width)
+	statusText := "Connected to " + selectedDb.ConnectionName
+	status := components.NewStatusBar(m.width, statusText)
+	content.WriteString(lipgloss.JoinVertical(
+		lipgloss.Bottom,
 		quickKeys,
 		status,
 	))
