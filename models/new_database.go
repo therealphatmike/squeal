@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -16,6 +15,7 @@ type NewDatabase struct {
 	height int
 	form   *huh.Form
 	lg     *lipgloss.Renderer
+	saved  bool
 }
 
 func NewDatabaseForm(width int, height int) NewDatabase {
@@ -101,10 +101,12 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
+	if m.form.State == huh.StateCompleted && !m.saved {
+		m.saved = true
 		db := databases.Database{
 			ConnectionName:  m.form.GetString("connectionName"),
 			Engine:          m.form.GetString("engine"),
+			ConnectionMode:  m.form.GetString("mode"),
 			Username:        m.form.GetString("user"),
 			Password:        m.form.GetString("password"),
 			Host:            m.form.GetString("host"),
@@ -161,7 +163,7 @@ func (m NewDatabase) View() string {
 	form := m.lg.NewStyle().
 		Align(lipgloss.Left).
 		Margin(1, 0).
-		Width(80).
+		Width(m.width - 12).
 		Render(m.form.View())
 
 	dialogBoxStyle := m.lg.NewStyle().
@@ -175,37 +177,30 @@ func (m NewDatabase) View() string {
 
 	header := m.lg.
 		NewStyle().
-		Width(100).
-		Height(1).
+		Width(m.width - 10).
 		Align(lipgloss.Center).
 		Render("New Database Connection Form")
 
-	content := strings.Builder{}
 	quickKeys := components.NewQuickKeys(m.width)
 	statusText := "Configuring New Connection"
 	status := components.NewStatusBar(m.width, statusText)
 
-	content.WriteString(m.lg.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.JoinVertical(
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		m.lg.Place(
+			m.width,
+			m.height,
 			lipgloss.Center,
-			dialogBoxStyle.Render(header),
-			form,
+			lipgloss.Center,
+			lipgloss.JoinVertical(
+				lipgloss.Center,
+				dialogBoxStyle.Render(header),
+				form,
+			),
+			lipgloss.WithWhitespaceChars(" "),
+			lipgloss.WithWhitespaceForeground(subtle),
 		),
-		lipgloss.WithWhitespaceChars(" "),
-		lipgloss.WithWhitespaceForeground(subtle),
-	))
-
-	content.WriteString(lipgloss.JoinVertical(
-		lipgloss.Bottom,
-		// why do I need two of these to get the quick keys bar to show up?
-		quickKeys,
 		quickKeys,
 		status,
-	))
-
-	return content.String()
+	)
 }

@@ -26,26 +26,39 @@ var (
 
 type SelectDatabase struct {
 	ready         bool
+	dbSelected    bool
 	width         int
 	height        int
 	form          *huh.Form
+	formHeight    int
 	selectableDbs []databases.Database
 	accessor      *huh.PointerAccessor[databases.Database]
 }
 
 func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Database) SelectDatabase {
+	return newSelectDatabaseForm(width, height, availableDbs, nil)
+}
+
+func newSelectDatabaseForm(width int, height int, availableDbs []databases.Database, focused *databases.Database) SelectDatabase {
 	dbOptions := []huh.Option[databases.Database]{}
 	for _, database := range availableDbs {
 		dbOptions = append(dbOptions, huh.NewOption(database.ConnectionName, database))
 	}
 
-	focused := new(databases.Database)
-	accessor := huh.NewPointerAccessor(focused)
+	var accessor *huh.PointerAccessor[databases.Database]
+	if focused != nil {
+		accessor = huh.NewPointerAccessor(focused)
+	} else {
+		zero := new(databases.Database)
+		accessor = huh.NewPointerAccessor(zero)
+	}
+	formHeight := 24
 
 	return SelectDatabase{
 		ready:         true,
 		width:         width,
 		height:        height,
+		formHeight:    formHeight,
 		selectableDbs: availableDbs,
 		accessor:      accessor,
 		form: huh.NewForm(
@@ -56,7 +69,7 @@ func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Datab
 					Accessor(accessor).
 					Options(dbOptions...),
 			),
-		).WithHeight(24),
+		).WithHeight(formHeight),
 	}
 }
 
@@ -71,6 +84,25 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Recreate form with current selection to handle resize (skip if already completed)
+		if !m.dbSelected {
+			m.form = huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[databases.Database]().
+						Title("Which database would you like to connect to?").
+						Key("database").
+						Accessor(m.accessor).
+						Options(func() []huh.Option[databases.Database] {
+							opts := []huh.Option[databases.Database]{}
+							for _, database := range m.selectableDbs {
+								opts = append(opts, huh.NewOption(database.ConnectionName, database))
+							}
+							return opts
+						}()...),
+				),
+			).WithHeight(m.formHeight)
+			cmds = append(cmds, m.form.Init())
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -85,18 +117,17 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
-		return m, tea.Quit
+		m.dbSelected = true
+		return m, nil
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m SelectDatabase) View() string {
-	content := strings.Builder{}
-
 	header := lipgloss.
 		NewStyle().
-		Width(102).
+		Width(m.width - 10).
 		Padding(0, 0).
 		Height(1).
 		Align(lipgloss.Center).
@@ -104,6 +135,13 @@ func (m SelectDatabase) View() string {
 
 	highlightedDb := m.accessor.Get()
 
+	formWidth := (m.width - 16) / 2
+	dbInfoWidth := m.width - 16 - formWidth
+
+	formContent := dialogBoxStyle.Width(formWidth).Height(m.formHeight + 1).MarginRight(0).Render(m.form.View())
+	infoContent := dialogBoxStyle.Width(dbInfoWidth).Height(m.formHeight + 1).Padding(0, 1).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb))
+
+	content := strings.Builder{}
 	content.WriteString(lipgloss.Place(
 		m.width,
 		m.height,
@@ -114,8 +152,8 @@ func (m SelectDatabase) View() string {
 			dialogBoxStyle.Render(header),
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
-				dialogBoxStyle.Width(50).Height(25).MarginRight(0).Render(m.form.View()),
-				dialogBoxStyle.Width(50).Height(25).MarginLeft(0).Padding(0).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb)),
+				formContent,
+				infoContent,
 			),
 		),
 		lipgloss.WithWhitespaceChars(" "),
@@ -127,8 +165,6 @@ func (m SelectDatabase) View() string {
 	status := components.NewStatusBar(m.width, statusText)
 	content.WriteString(lipgloss.JoinVertical(
 		lipgloss.Bottom,
-		// why do I need two of these to get the quick keys bar to show up?
-		quickKeys,
 		quickKeys,
 		status,
 	))
@@ -149,7 +185,7 @@ func getCurrentlyHighlightedDatabaseInfo(highlighted databases.Database) string 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.Place(
-			50,
+			0,
 			1,
 			lipgloss.Center,
 			lipgloss.Center,
