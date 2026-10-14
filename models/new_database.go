@@ -15,6 +15,7 @@ type NewDatabase struct {
 	height int
 	form   *huh.Form
 	lg     *lipgloss.Renderer
+	saved  bool
 }
 
 func NewDatabaseForm(width int, height int) NewDatabase {
@@ -100,10 +101,12 @@ func (m NewDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
+	if m.form.State == huh.StateCompleted && !m.saved {
+		m.saved = true
 		db := databases.Database{
 			ConnectionName:  m.form.GetString("connectionName"),
 			Engine:          m.form.GetString("engine"),
+			ConnectionMode:  m.form.GetString("mode"),
 			Username:        m.form.GetString("user"),
 			Password:        m.form.GetString("password"),
 			Host:            m.form.GetString("host"),
@@ -200,6 +203,4 @@ func (m NewDatabase) View() string {
 		quickKeys,
 		status,
 	)
-
-	return content.String()
 }

@@ -29,23 +29,35 @@ type SelectDatabase struct {
 	width         int
 	height        int
 	form          *huh.Form
+	formHeight    int
 	selectableDbs []databases.Database
 	accessor      *huh.PointerAccessor[databases.Database]
 }
 
 func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Database) SelectDatabase {
+	return newSelectDatabaseForm(width, height, availableDbs, nil)
+}
+
+func newSelectDatabaseForm(width int, height int, availableDbs []databases.Database, focused *databases.Database) SelectDatabase {
 	dbOptions := []huh.Option[databases.Database]{}
 	for _, database := range availableDbs {
 		dbOptions = append(dbOptions, huh.NewOption(database.ConnectionName, database))
 	}
 
-	focused := new(databases.Database)
-	accessor := huh.NewPointerAccessor(focused)
+	var accessor *huh.PointerAccessor[databases.Database]
+	if focused != nil {
+		accessor = huh.NewPointerAccessor(focused)
+	} else {
+		zero := new(databases.Database)
+		accessor = huh.NewPointerAccessor(zero)
+	}
+	formHeight := 24
 
 	return SelectDatabase{
 		ready:         true,
 		width:         width,
 		height:        height,
+		formHeight:    formHeight,
 		selectableDbs: availableDbs,
 		accessor:      accessor,
 		form: huh.NewForm(
@@ -56,7 +68,7 @@ func NewSelectDatabaseForm(width int, height int, availableDbs []databases.Datab
 					Accessor(accessor).
 					Options(dbOptions...),
 			),
-		).WithHeight(24),
+		).WithHeight(formHeight),
 	}
 }
 
@@ -71,6 +83,9 @@ func (m SelectDatabase) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Recreate form with current selection to handle resize
+		focused := m.accessor.Get()
+		return newSelectDatabaseForm(m.width, m.height, m.selectableDbs, &focused), m.form.Init()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -105,8 +120,8 @@ func (m SelectDatabase) View() string {
 	formWidth := (m.width - 16) / 2
 	dbInfoWidth := m.width - 16 - formWidth
 
-	formContent := dialogBoxStyle.Width(formWidth).Height(25).MarginRight(0).Render(m.form.View())
-	infoContent := dialogBoxStyle.Width(dbInfoWidth).Height(25).Padding(0, 1).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb))
+	formContent := dialogBoxStyle.Width(formWidth).Height(m.formHeight + 1).MarginRight(0).Render(m.form.View())
+	infoContent := dialogBoxStyle.Width(dbInfoWidth).Height(m.formHeight + 1).Padding(0, 1).Render(getCurrentlyHighlightedDatabaseInfo(highlightedDb))
 
 	content := strings.Builder{}
 	content.WriteString(lipgloss.Place(

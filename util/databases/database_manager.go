@@ -52,12 +52,6 @@ func AddDatabaseConnection(newDb Database) error {
 		}
 	}
 
-	f, err := os.OpenFile(dbConfigFile, os.O_WRONLY, os.ModeAppend)
-	if err != nil {
-		log.Panic("unable to read file")
-		return err
-	}
-
 	dbFile := DatabaseFile{}
 	if _, err := toml.DecodeFile(dbConfigFile, &dbFile); err != nil {
 		log.Panic(fmt.Sprintf("Unable to unmarshal database file: %s", err))
@@ -70,8 +64,16 @@ func AddDatabaseConnection(newDb Database) error {
 	newContent := DatabaseFile{
 		Databases: dbs,
 	}
+
+	f, err := os.OpenFile(dbConfigFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Panic("unable to open file")
+		return err
+	}
+
 	if err := toml.NewEncoder(f).Encode(newContent); err != nil {
 		log.Panic(fmt.Sprintf("unable to write to file: %s", err))
+		f.Close()
 		return err
 	}
 	if err := f.Close(); err != nil {
